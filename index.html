@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf8">
+<link rel="stylesheet" href="style.css">
+<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+<meta content="width=device-width, user-scalable=no" name="viewport" />
+<title>Freestation</title>
+<script>
+	$ = document.querySelector.bind(document);
+	var DB = [];
+	var url = 'db.csv';
+	function makeRap(row) {
+		var hex = row[4];
+		if (!hex) return ""
+		if (hex == 0) return '<span title="Press Circle in ReactPSN to activate this game">(o)</span>'//\u233E\u25CB\u26AA\u29BF\u29BE
+		return '<a download="' + row[1] + '-' + row[0] + '_00-' + hex.substr(16) + '.rap" href="data:application/stream;base64,' + btoa((hex.match(/../g) || []).map(function (x) { return String.fromCharCode(parseInt(x, 16)) }).join('')) + '">RAP</a>'
+	}
+	function searchDB(q, out) {
+		//$("#about").hidden = !(out.hidden = !q);
+		var rule = new RegExp(decodeURIComponent(q), 'i');
+		out.innerHTML = DB.filter(function (a) { return a[5].match(rule) }).slice(0, 100).map(function (a) { return '<li><a href="' + a[6] + '">' + a[5] + ' ' + (a[3]) + ' (' + a[0][2] + ")</a> " + makeRap(a) + "</li>" }).join('')
+
+	}
+	function loadDB(force) {
+		$('#q').disabled = !localStorage['DB'];
+		if (!localStorage['DB'] || force) {//DB not in cache or force reload
+			$('#q').placeholder = "Loading DataBase ..."
+			var xhr = new XMLHttpRequest();
+			$('#b').disabled = true;
+			xhr.onabort = xhr.ontimeout = xhr.onerror = function (ev) {
+				$('#b').disabled = false;
+				$('#q').placeholder = "Unable to load Database"
+			}
+			xhr.onload = function (ev) {//xhr.onloadend
+				$('#b').disabled = false;
+				localStorage['DB'] = JSON.stringify(ev.target.response.split("\n").map(function (c) { return c.split(',') }))
+				loadDB();//now that the DB is in localstorage, do a self-call
+			}
+			xhr.open('GET', url);
+			xhr.send();
+		} else {
+			DB = JSON.parse(localStorage['DB'])
+			$('#q').placeholder = "Search in " + DB.length + " url"
+			document.body.onhashchange()//trigger a hash search (if any)
+		}
+	}
+</script>
+<style>
+	form,
+	img,
+	ul {
+		display: block;
+		margin: 2em auto;
+	}
+
+	header {
+		display: block;
+		text-align: center;
+	}
+
+	[download] {
+		text-decoration: none;
+		padding: 1px 8px;
+		color: black !important;
+		border: 1px solid #444;
+		border-radius: 3px;
+	}
+
+	li {
+		line-height: 1.5em;
+		list-style: none;
+	}
+
+	input {
+		font-size: 1.5em
+	}
+</style>
+<body onload="loadDB()" onhashchange="try{searchDB(document.location.hash.substr(1),$('#list'))}catch(e){alert(e)}">
+	<header>
+		<a id="about" href="https://twitter.com/pawi_x/">
+			<img height="100"
+				src='freestation.png'>
+		</a>
+		<form onsubmit="document.location.hash=this.elements['q'].value;return false;">
+			<input type="text" size=25 id="q" onkeyup="this.form.onsubmit()" />
+			<input type="button" id="b" onclick="loadDB(true)" value="🔄" title="reload DB"/>
+		</form>
+	</header>
+	<ul id="list"></ul>
+</body>
